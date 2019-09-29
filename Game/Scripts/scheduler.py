@@ -1,12 +1,19 @@
 import collections
 import bge
 import logging
+import cProfile
+import config
+
 from utils import StructuredMessage
 
 TIME_FUNC = bge.logic.getClockTime
 LOGGER = logging.getLogger(__name__)
 
 Event = collections.namedtuple("Event", ['function'])
+
+profiler = cProfile.Profile()
+
+
 
 previous_time = TIME_FUNC()
 events = []
@@ -40,6 +47,13 @@ def remove_event(event):
 
 def update_events():
     """ Updates all events currently registered to the scheduler """
+    if config.get('PROFILE'):
+        profiler.runcall(_do_update)
+        
+    else:
+        _do_update()
+
+def _do_update():
     global previous_time
     global counter
     counter += 1
@@ -48,3 +62,12 @@ def update_events():
     previous_time = now
     for event in events:
         event.function(delta)
+
+
+
+class OnExit:
+    def __del__(self):
+        if config.get('PROFILE'):
+            profiler.print_stats(sort='tottime')
+
+bge.logic.globalDict['Exit'] = OnExit()

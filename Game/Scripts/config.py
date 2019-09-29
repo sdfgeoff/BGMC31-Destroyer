@@ -4,7 +4,10 @@ DATA = {
     'TOUCH_FRIENDLY': False,
     'MOUSE_ZOOM_SENSITIVITY': 0.05,
     'MOUSE_SENSITIVITY': 4.0,
-    'MOUSE_Y_INVERT': False
+    'MOUSE_Y_INVERT': False,
+    'EXIT_ON_ERROR': True,
+    'LOG_LEVEL': 'DEBUG',
+    'PROFILE': True,
 }
 
 

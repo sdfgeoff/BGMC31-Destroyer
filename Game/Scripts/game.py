@@ -3,6 +3,7 @@ import utils
 import logging
 import defs
 import bge
+import config
 
 import ship
 import camera
@@ -12,17 +13,17 @@ import sys
 
 class Game(utils.BaseClass):
     CONFIG_ITEMS = [
-        'EXIT_IF_ERROR',
-        'LOG_LEVEL',
     ]
-    def __init__(self, scene, config):
-        super().__init__(config)
+    def __init__(self, scene, conf):
+        super().__init__(conf)
         
-        if self.config['EXIT_IF_ERROR']:
+        logging.basicConfig(level=config.get('LOG_LEVEL'), format='%(message)s')
+        if config.get('EXIT_ON_ERROR'):
+            self.log.info("exit_with_error_enabled")
             sys.excepthook = err
         else:
             sys.excepthook = sys.__excepthook__
-        logging.basicConfig(level=self.config['LOG_LEVEL'], format='%(message)s')
+        
             
         self.log.info(self.M("init_game"))
         self._event = scheduler.Event(self.update)

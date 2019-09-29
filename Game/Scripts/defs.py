@@ -34,6 +34,4 @@ HERO_CONFIG = {
 
 
 MAIN_CONFIG = {
-    'EXIT_IF_ERROR': True,
-    'LOG_LEVEL': 'DEBUG'
 }
