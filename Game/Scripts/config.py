@@ -6,7 +6,7 @@ DATA = {
     'MOUSE_SENSITIVITY': 4.0,
     'MOUSE_Y_INVERT': False,
     'EXIT_ON_ERROR': True,
-    'LOG_LEVEL': 'DEBUG',
+    'LOG_LEVEL': 'INFO',
     'PROFILE': True,
 }
 

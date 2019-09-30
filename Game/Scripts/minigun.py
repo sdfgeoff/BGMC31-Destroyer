@@ -4,10 +4,11 @@ import mathutils
 import random
 import utils
 import scheduler
+import bullet
 
 from utils import BaseClass
 
-
+MAX_SHOTS_PER_FRAME = 3
 
 class MiniGun(BaseClass):
     """ A minigun with rotation barrels """
@@ -53,7 +54,6 @@ class MiniGun(BaseClass):
         self._target = obj
 
     def update(self, delta):
-        
         if self._target != None:
             self._aim_at(self._target.worldPosition, delta, [self._target])  # TODO: motion prediction
     
@@ -96,7 +96,7 @@ class MiniGun(BaseClass):
     def _fire(self, delta):
         if self.rounds_remaining == 0:
             return
-
+        self.time_since_last_shot += delta
 
         if self.barrel_velocity < self.config['ROUNDS_PER_MINUTE'] / 60 / self.config['BARRELS']:
             self.barrel_velocity += self.config['BARREL_ACCELERATION'] * delta
@@ -105,12 +105,12 @@ class MiniGun(BaseClass):
 
         if self.barrel_velocity == 0:
             return
-        time_per_shot = 1/(self.barrel_velocity * 6)
-        self.time_since_last_shot += delta
+        time_per_shot = 1/(self.barrel_velocity * self.config['BARRELS'])
 
-
-        while self.time_since_last_shot > time_per_shot:
+        counter = MAX_SHOTS_PER_FRAME
+        while self.time_since_last_shot > time_per_shot and counter > 0:
             self.time_since_last_shot -= time_per_shot
+            counter -= 1
 
             self.rounds_remaining -= 1
 
@@ -119,87 +119,18 @@ class MiniGun(BaseClass):
                 new_flash.worldTransform = self.spawner.worldTransform
 
             self.log.debug(self.M("minigun_firing", rounds_remaining=self.rounds_remaining))
-            MinigunBullet(
+            bullet.Bullet(
                 self,
                 self.spawner,
                 self.time_since_last_shot,
                 self.config['PROJECTILE_CONFIG'],
                 self.rounds_remaining % self.config['ROUNDS_PER_TRACER'] == 0
             )
+        if counter == 0:
+            self.log.warn(self.M("shots_per_frame_exceeded", since_last_shot=self.time_since_last_shot, per_shot=time_per_shot, delta=delta))
+            self.time_since_last_shot = 0.0
 
     def __del__(self):
         scheduler.remove_event(self._event)
 
-
-
-class MinigunBullet(BaseClass):
-    CONFIG_ITEMS = ['VELOCITY', 'TRACER_OBJECT']
-    def __init__(self, gun, spawner, time_since_shot, config, is_tracer):
-        super().__init__(config)
-        
-        self.log.debug(self.M("create_minigun_bullet", is_tracer=is_tracer))
-
-        self.gun = gun
-        self.spawner = spawner  # TODO: Make not depend on spawner
-        if is_tracer:
-            self.obj = self.spawner.scene.addObject(self.config['TRACER_OBJECT'])
-            self.obj.worldOrientation = self.spawner.worldOrientation
-        else:
-            self.obj = None
-
-        self.collided = False
-
-        self._event = scheduler.Event(self.update)
-        scheduler.add_event(self._event)
-
-        self.position = self.spawner.worldPosition.copy()
-        self.direction = self.spawner.getAxisVect([0,0,1])
-
-        self._move(
-            self.position,
-            self.position + self.direction * self.config['VELOCITY'] * time_since_shot
-        )
-        if self.should_remove():
-            self.do_remove()
-
-    def update(self, delta):
-        """ Moves the projectile, checks if it hit things etc. """
-        assert not self.collided
-
-        self._move(
-            self.position,
-            self.position + self.direction * self.config['VELOCITY'] * delta
-        )
-
-        if self.should_remove():
-            self.do_remove()
-
-    def _move(self, from_position, to_position):
-        """ Moves the projectile, using a raycast to check it didn't hit
-        anything """
-        obj, hit_pos, hit_nor = self.spawner.rayCast(to_position, from_position)
-        self.collided = obj != None
-
-        if not self.collided:
-            self.position = to_position
-        else:
-            self.position = hit_pos
-
-        if self.obj != None:
-            self.obj.worldPosition = self.position
-
-    def do_remove(self):
-        """ Removes the object and cleans up """
-        self.log.debug(self.M("deleting_minigun_bullet"))
-        if self.obj is not None:
-            self.obj.endObject()
-        scheduler.remove_event(self._event)
-
-    def should_remove(self):
-        """ Checks if this object should be removed (eg timed out or hit
-        something) or if it still needs to exist """
-        remove = False
-        remove |= (self.spawner.worldPosition - self.position).length > 2000
-        remove |= self.collided
-        return remove
 

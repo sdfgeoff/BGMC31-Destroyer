@@ -32,21 +32,28 @@ def lerp(a, b, t):
     return a * t + b * (1.0 - t)
 
 
+def clamp(n, mi, ma):
+    return max(mi, min(n, ma))
+
+
 class BaseClass:
     ID_MAX = 0
     CONFIG_ITEMS = []
-    def __init__(self, config):
+    def __init__(self, conf):
         self.log = logging.getLogger(self.__class__.__name__)
         self.id = BaseClass.ID_MAX
         
-        self.config = config
+        self.config = conf
         
         for item in self.CONFIG_ITEMS:
-            if item not in config:
+            if item not in self.config:
                 raise Exception("Configuration error for {}. Missing item {}".format(self.__class__.__name__, item))
+        for item in self.config:
+            if item not in self.CONFIG_ITEMS:
+                raise Exception("Extra item {} in configuration for {}".format(item, self.__class__.__name__))
                 
         BaseClass.ID_MAX += 1
     
     def M(self, message, **kwargs):
         return StructuredMessage(message, i=self.id, cls=self.__class__.__name__, **kwargs)
-
+        

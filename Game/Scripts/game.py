@@ -4,12 +4,14 @@ import logging
 import defs
 import bge
 import config
+import time
 
 import ship
 import camera
 import mouse
 
 import sys
+import gc
 
 class Game(utils.BaseClass):
     CONFIG_ITEMS = [
@@ -23,6 +25,11 @@ class Game(utils.BaseClass):
             sys.excepthook = err
         else:
             sys.excepthook = sys.__excepthook__
+        
+        for cb in gc.callbacks.copy():
+            gc.callbacks.remove(cb)
+        gc.callbacks.append(gc_notify)
+        
         
             
         self.log.info(self.M("init_game"))
@@ -51,9 +58,15 @@ class Game(utils.BaseClass):
         
         if self.mouse.did_click:
             over = self.mouse.get_over(self.scene)
-            for gun in self.hero.miniguns:
-                gun.target(over.obj)
             
+            guns = self.hero.miniguns
+            if bge.events.LEFTSHIFTKEY in bge.logic.keyboard.active_events:
+                guns = self.hero.railguns
+
+            for gun in guns:
+                gun.target(over.obj)
+
+        
         
 
 
@@ -67,3 +80,12 @@ def err(exctype, value, traceback):
     sys.__excepthook__(exctype, value, traceback)
 
 
+gc_time = 0
+
+def gc_notify(phase, info):
+    global gc_time
+    if phase == 'start':
+        gc_time = time.time()
+    else:
+        logging.warn("Garbage Collection Duration: %f, %s", time.time() - gc_time, str(info))
+    

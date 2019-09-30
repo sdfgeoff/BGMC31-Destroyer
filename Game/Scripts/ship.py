@@ -1,12 +1,14 @@
 import scheduler
 import utils
 import minigun
+import railgun
 import defs
 import bge
 
 class Ship(utils.BaseClass):
     CONFIG_ITEMS = [
-        'MINIGUN_CONFIG'
+        'MINIGUN_CONFIG',
+        'RAILGUN_CONFIG',
     ]
     def __init__(self, obj, config):
         super().__init__(config)
@@ -21,6 +23,7 @@ class Ship(utils.BaseClass):
         scheduler.add_event(self._event)
         
         self.miniguns = [minigun.MiniGun(o, self.config["MINIGUN_CONFIG"]) for o in self.obj.childrenRecursive if 'MINIGUN' in o]
+        self.railguns = [railgun.RailGun(o, self.config["RAILGUN_CONFIG"]) for o in self.obj.childrenRecursive if 'RAILGUN' in o]
         self.thrusters = [Thruster(self.hull, o) for o in self.obj.childrenRecursive if 'THRUSTER' in o]
         
         self.hull.removeParent()
