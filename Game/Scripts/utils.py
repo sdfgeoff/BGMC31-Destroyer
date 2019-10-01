@@ -43,6 +43,14 @@ class BaseClass:
         self.log = logging.getLogger(self.__class__.__name__)
         self.id = BaseClass.ID_MAX
         
+        self.load_config(conf)
+
+        BaseClass.ID_MAX += 1
+    
+    def M(self, message, **kwargs):
+        return StructuredMessage(message, i=self.id, cls=self.__class__.__name__, **kwargs)
+        
+    def load_config(self, conf):
         self.config = conf
         
         for item in self.CONFIG_ITEMS:
@@ -52,8 +60,5 @@ class BaseClass:
             if item not in self.CONFIG_ITEMS:
                 raise Exception("Extra item {} in configuration for {}".format(item, self.__class__.__name__))
                 
-        BaseClass.ID_MAX += 1
-    
-    def M(self, message, **kwargs):
-        return StructuredMessage(message, i=self.id, cls=self.__class__.__name__, **kwargs)
+        
         

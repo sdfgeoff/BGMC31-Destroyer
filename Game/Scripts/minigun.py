@@ -119,7 +119,7 @@ class MiniGun(BaseClass):
                 new_flash.worldTransform = self.spawner.worldTransform
 
             self.log.debug(self.M("minigun_firing", rounds_remaining=self.rounds_remaining))
-            bullet.Bullet(
+            bullet.create_bullet(
                 self,
                 self.spawner,
                 self.time_since_last_shot,
