@@ -3,7 +3,7 @@ import mathutils
 
 import config
 import utils
-
+import sounds
 
 
 class Camera(utils.BaseClass):
@@ -76,3 +76,16 @@ class Camera(utils.BaseClass):
             self.config['MAX_ZOOM_FOV'],
             self.zoom ** 0.5
         )
+        
+        sounds.set_listener_transform(self.camera.worldTransform)
+        
+    def set_view(self, yaw, pitch, zoom):
+        cur_yaw = self.yaw.localOrientation.to_euler()
+        cur_yaw.z = yaw
+        self.yaw.localOrientation = cur_yaw
+        
+        cur_pitch = self.pitch.localOrientation.to_euler()
+        cur_pitch.y = pitch
+        self.pitch.localOrientation = cur_pitch
+        
+        self.zoom = zoom

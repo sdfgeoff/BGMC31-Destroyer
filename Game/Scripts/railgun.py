@@ -3,6 +3,7 @@ import scheduler
 import math
 import mathutils
 import bullet
+import sounds
 
 class RailGun(utils.BaseClass):
     CONFIG_ITEMS = [
@@ -67,9 +68,10 @@ class RailGun(utils.BaseClass):
         can_fire = True
         for barrel in self.barrels:
             can_fire &= barrel.aim_at(target_position, delta, valid_objects)
+            barrel.animate_recover(delta)
         
         
-        if can_fire or self.salvo_number != 0:
+        if can_fire:
             self._fire(delta)
 
 
@@ -100,6 +102,15 @@ class RailGun(utils.BaseClass):
                 new_flash.worldTransform = barrel.spawner.worldTransform
 
             self.log.debug(self.M("minigun_firing", rounds_remaining=self.rounds_remaining))
+            
+            sounds.play_effect_single(
+                "Railgun.wav",
+                barrel.spawner.worldPosition,
+                0.0,
+                0.1,
+                0.1
+            )
+            barrel.animate_fire()
             bullet.create_bullet(
                 self,
                 barrel.spawner,
@@ -121,11 +132,14 @@ class Barrel(utils.BaseClass):
         'PITCH_SPEED',
         'YAW_SPEED',
         'RECOIL_DISTANCE',
+        'RECOIL_RECOVER_SPEED',
+        'FIRE_ANGLE'
     ]
     def __init__(self, obj, conf):
         super().__init__(conf)
         self.spawner = obj
         self.barrel = self.up_heirarchy_till_property(self.spawner, 'BARREL')
+        self.barrel_position = self.barrel.localPosition.copy()
         self.pitch = self.up_heirarchy_till_property(self.barrel, 'PITCH')
         self.yaw = self.up_heirarchy_till_property(self.pitch, 'BARREL_YAW')
         self.log.info(self.M("barrel_create", spawner=self.spawner.name, barrel=self.barrel.name, pitch=self.pitch.name, yaw=self.yaw.name))
@@ -159,13 +173,24 @@ class Barrel(utils.BaseClass):
         self.pitch.localOrientation = [0, pitch_angle, 0]
         
         angle_error = 1.0 - turret_to_target_spawnerspace.normalized().dot(mathutils.Vector([0,0,1]))
-        if angle_error > 0.02:
+        if angle_error > self.config['FIRE_ANGLE']:
             return False
 
         rayres = self.spawner.rayCast(target_position, self.spawner.worldPosition)
         if rayres[0] not in valid_objects:
             return False
         return True
+    
+    
+    def animate_fire(self):
+        self.barrel.localPosition.x -= self.config['RECOIL_DISTANCE']
+    
+    def animate_recover(self, delta):
+        if self.barrel.localPosition.x < self.barrel_position.x:
+            self.barrel.localPosition.x += delta * self.config['RECOIL_RECOVER_SPEED']
+        else:
+            self.barrel.localPosition.x = self.barrel_position.x
+        
 
     
     def up_heirarchy_till_property(self, obj, prop):

@@ -1,8 +1,14 @@
 import json
 import logging
 import collections
+import os
 
 
+# Path to the root of this project
+ROOT_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../'))
+
+
+# Helpers for handling ray casts from BGE
 RayHitUVResult = collections.namedtuple('RayHitUVResult', ['obj', 'position', 'normal', 'polygon', 'uv'])
 RayHitPolyResult = collections.namedtuple('RayHitUVResult', ['obj', 'position', 'normal', 'polygon'])
 RayHitResult = collections.namedtuple('RayHitUVResult', ['obj', 'position', 'normal'])
@@ -29,23 +35,28 @@ def parent_groups(obj):
 
 
 def lerp(a, b, t):
+    """ Linear interpolate. Nice and simple """
     return a * t + b * (1.0 - t)
 
 
 def clamp(n, mi, ma):
+    """ Makes sure a number is between a min and max bound """
     return max(mi, min(n, ma))
 
 
 class BaseClass:
+    """ A generic class used a lot through this project, mostly
+    for it's ability to do some checks on config dictionaries.
+    
+    Also contains a logger and a structured message creator """
     ID_MAX = 0
     CONFIG_ITEMS = []
     def __init__(self, conf):
         self.log = logging.getLogger(self.__class__.__name__)
         self.id = BaseClass.ID_MAX
+        BaseClass.ID_MAX += 1
         
         self.load_config(conf)
-
-        BaseClass.ID_MAX += 1
     
     def M(self, message, **kwargs):
         return StructuredMessage(message, i=self.id, cls=self.__class__.__name__, **kwargs)

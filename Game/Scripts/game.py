@@ -9,6 +9,7 @@ import time
 import ship
 import camera
 import mouse
+import environment
 
 import sys
 import gc
@@ -44,10 +45,16 @@ class Game(utils.BaseClass):
         self.mouse = mouse.Mouse()
         self.mouse.scenes = [self.scene]
         
-        self.scene.objects['MainCamera'].setParent(self.hero.vert_center)
-        self.scene.objects['LightRig'].setParent(self.hero.vert_center)
+        self.environment = environment.Environment(
+            self.scene.objects['LightRig'],
+            self.scene.objects['TerrainTiles'],
+            self.scene.objects['SkySphere'],
+        )
         
-
+        self.scene.objects['MainCamera'].setParent(self.hero.vert_center)
+        self.camera.set_view(0.5, -0.5, 0.2)
+        
+        self.navigation_waypoints = []
         
         self.scene.active_camera = self.camera.camera
         bge.render.showMouse(True)
@@ -56,15 +63,43 @@ class Game(utils.BaseClass):
         self.mouse.update()
         self.camera.update(self.mouse.drag_delta, self.mouse.scroll_delta)
         
-        if self.mouse.did_click:
-            over = self.mouse.get_over(self.scene)
-            
-            guns = self.hero.miniguns
-            if bge.events.LEFTSHIFTKEY in bge.logic.keyboard.active_events:
-                guns = self.hero.railguns
+        self.environment.set_player_position(self.hero.vert_center.worldPosition)
+        self.environment.set_camera_position(self.camera.camera.worldPosition)
+        
+        over = self.mouse.get_over(self.scene)
+        
+        if self.mouse.did_click and over.obj is not None:
+            if 'TERRAIN_TILES' in over.obj:
+                if bge.events.LEFTSHIFTKEY not in bge.logic.keyboard.active_events:
+                    for waypoint in self.navigation_waypoints:
+                        waypoint.endObject()
+                    self.navigation_waypoints.clear()
+                    
+                waypoint = self.scene.addObject("HeroWaypoint")
+                waypoint.worldOrientation = [0,0,0]
+                waypoint.worldPosition = over.position
+                self.navigation_waypoints.append(waypoint)
 
-            for gun in guns:
-                gun.target(over.obj)
+                    
+            else:
+                target = over.obj
+                guns = self.hero.miniguns
+                if bge.events.LEFTSHIFTKEY in bge.logic.keyboard.active_events:
+                    guns = self.hero.railguns
+                if bge.events.LEFTCTRLKEY in bge.logic.keyboard.active_events:
+                    target = None
+
+                for gun in guns:
+                    gun.target(target)
+        
+        
+        if self.navigation_waypoints:
+            old_waypoint = self.navigation_waypoints[0]
+            self.hero.navigation_target = old_waypoint.worldPosition.copy()
+            if (self.hero.hull.worldPosition.xy - old_waypoint.worldPosition.xy).length < 40:
+                old_waypoint.endObject()
+                self.navigation_waypoints = self.navigation_waypoints[1:]
+            
 
         
         

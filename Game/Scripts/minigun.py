@@ -5,6 +5,7 @@ import random
 import utils
 import scheduler
 import bullet
+import sounds
 
 from utils import BaseClass
 
@@ -119,6 +120,13 @@ class MiniGun(BaseClass):
                 new_flash.worldTransform = self.spawner.worldTransform
 
             self.log.debug(self.M("minigun_firing", rounds_remaining=self.rounds_remaining))
+            sounds.play_effect_single(
+                "Minigun.wav",
+                self.spawner.worldPosition,
+                self.time_since_last_shot,
+                0.1,
+                0.3
+            )
             bullet.create_bullet(
                 self,
                 self.spawner,

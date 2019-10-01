@@ -61,7 +61,7 @@ class Mouse(object):
             # If the mouse hasn't moved too far since it was clicked, then
             # register this as a click:
             if self.drag_vector != None:
-                self.did_click = self.drag_vector.length < 0.1
+                self.did_click = self.drag_vector.length < 0.05
             else:
                 # Single frame click/release
                 self.did_click = True
