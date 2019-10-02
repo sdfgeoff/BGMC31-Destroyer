@@ -6,12 +6,13 @@ import utils
 import scheduler
 import bullet
 import sounds
+import gun
 
 from utils import BaseClass
 
 MAX_SHOTS_PER_FRAME = 3
 
-class MiniGun(BaseClass):
+class MiniGun(gun.Gun):
     """ A minigun with rotation barrels """
     CONFIG_ITEMS = [
         "YAW_SPEED",
@@ -26,7 +27,7 @@ class MiniGun(BaseClass):
         "ROUNDS_PER_TRACER"
     ]
     def __init__(self, obj, config):
-        super().__init__(config)
+        super().__init__(obj, config)
         self.log.debug(self.M("create_minigun", game_object=obj.name))
         utils.parent_groups(obj)
         objs = obj.childrenRecursive
@@ -46,6 +47,7 @@ class MiniGun(BaseClass):
 
         self._event = scheduler.Event(self.update)
         scheduler.add_event(self._event)
+
 
     def target(self, obj):
         if obj == None:

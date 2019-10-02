@@ -4,8 +4,9 @@ import math
 import mathutils
 import bullet
 import sounds
+import gun
 
-class RailGun(utils.BaseClass):
+class RailGun(gun.Gun):
     CONFIG_ITEMS = [
         'NUMBER_ROUNDS',
         'YAW_SPEED',
@@ -16,15 +17,14 @@ class RailGun(utils.BaseClass):
         'SALVO_SEPARATION_TIME',
     ]
     def __init__(self, obj, conf):
-        super().__init__(conf)
+        super().__init__(obj, conf)
         self.log.debug(self.M("create_railgun", game_object=obj.name))
         utils.parent_groups(obj)
         objs = obj.childrenRecursive
+        
 
         self.obj = obj
         self.yaw = [o for o in objs if 'MAIN_YAW' in o][0]
-        
-        
         
         self.pitch = [o for o in objs if 'PITCH' in o][0]
         self.barrels = [Barrel(o, self.config['BARREL_CONFIG']) for o in objs if 'SPAWNER' in o]

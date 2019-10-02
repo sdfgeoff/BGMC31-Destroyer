@@ -10,12 +10,17 @@ import ship
 import camera
 import mouse
 import environment
+from gui import hud
 
 import sys
 import gc
 
 class Game(utils.BaseClass):
     CONFIG_ITEMS = [
+        'HUD_CONFIG',
+        'HERO_CONFIG',
+        'CAMERA_CONFIG',
+        'MOUSE_CONFIG'
     ]
     def __init__(self, scene, conf):
         super().__init__(conf)
@@ -37,13 +42,14 @@ class Game(utils.BaseClass):
         self._event = scheduler.Event(self.update)
         scheduler.add_event(self._event)
         
+        bge.logic.addScene('HUD')
         self.scene = scene
-        self.is_setup = False
+        self.hud = None
+        self.hud_scene = None
         
-        self.hero = ship.Ship(self.scene.objects['HeroShipMain'], defs.HERO_CONFIG)
-        self.camera = camera.Camera(self.scene.objects['MainCamera'], defs.CAMERA_CONFIG)
-        self.mouse = mouse.Mouse()
-        self.mouse.scenes = [self.scene]
+        self.hero = ship.Ship(self.scene.objects['HeroShipMain'], self.config['HERO_CONFIG'])
+        self.camera = camera.Camera(self.scene.objects['MainCamera'], self.config['CAMERA_CONFIG'])
+        self.mouse = mouse.Mouse(self.config['MOUSE_CONFIG'])
         
         self.environment = environment.Environment(
             self.scene.objects['LightRig'],
@@ -58,13 +64,32 @@ class Game(utils.BaseClass):
         
         self.scene.active_camera = self.camera.camera
         bge.render.showMouse(True)
-    
+        
+    def setup_hud(self):
+        self.hud_scene = [s for s in bge.logic.getSceneList() if s.name == "HUD"][0]
+        self.hud = hud.HUD(
+            self.hud_scene,
+            self.config['HUD_CONFIG'],
+            self.mouse
+        )
+        self.hud.set_ship(self.hero)
+        self.mouse.scenes = [self.scene, self.hud_scene]
+        
     def update(self, delta):
+        if self.hud is None:
+            self.setup_hud()
+            return
+
         self.mouse.update()
         self.camera.update(self.mouse.drag_delta, self.mouse.scroll_delta)
         
         self.environment.set_player_position(self.hero.vert_center.worldPosition)
         self.environment.set_camera_position(self.camera.camera.worldPosition)
+        
+        over_hud = self.mouse.get_over(self.hud_scene)
+        if over_hud.obj is not None:
+            # User is interacting with HUD, not the game world
+            return
         
         over = self.mouse.get_over(self.scene)
         
