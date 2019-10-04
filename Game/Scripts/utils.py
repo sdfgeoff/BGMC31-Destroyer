@@ -56,10 +56,15 @@ class BaseClass:
         self.id = BaseClass.ID_MAX
         BaseClass.ID_MAX += 1
         
+        self.default_message_data = {
+			'i': self.id,
+			'cls': self.__class__.__name__
+        }
+        
         self.load_config(conf)
     
     def M(self, message, **kwargs):
-        return StructuredMessage(message, i=self.id, cls=self.__class__.__name__, **kwargs)
+        return StructuredMessage(message, **self.default_message_data, **kwargs)
         
     def load_config(self, conf):
         self.config = conf

@@ -25,9 +25,9 @@ class Ship(utils.BaseClass):
         self._event = scheduler.Event(self.update)
         scheduler.add_event(self._event)
         
-        self.miniguns = [minigun.MiniGun(o, self.config["MINIGUN_CONFIG"]) for o in self.obj.childrenRecursive if 'MINIGUN' in o]
-        self.railguns = [railgun.RailGun(o, self.config["RAILGUN_CONFIG"]) for o in self.obj.childrenRecursive if 'RAILGUN' in o]
-        self.thrusters = [Thruster(self.hull, o, self.config['THRUSTER_CONFIG']) for o in self.obj.childrenRecursive if 'THRUSTER' in o]
+        self.miniguns = GunStorage(minigun.MiniGun(o, self.config["MINIGUN_CONFIG"]) for o in self.obj.childrenRecursive if 'MINIGUN' in o)
+        self.railguns = GunStorage(railgun.RailGun(o, self.config["RAILGUN_CONFIG"]) for o in self.obj.childrenRecursive if 'RAILGUN' in o)
+        self.thrusters = GunStorage(Thruster(self.hull, o, self.config['THRUSTER_CONFIG']) for o in self.obj.childrenRecursive if 'THRUSTER' in o)
         
         self.hull.removeParent()
         
@@ -48,7 +48,6 @@ class Ship(utils.BaseClass):
             thrust -= self.hull.localLinearVelocity.y * 0.05
             thrust = utils.clamp(thrust, 0, 1)
             self.hull.applyForce([0, force * thrust, 0], True)
-        print(self.hull.localLinearVelocity)
         
 
 class Thruster(utils.BaseClass):
@@ -78,3 +77,13 @@ class Thruster(utils.BaseClass):
         thrust *= self.ship_obj.mass * self.config['THRUST_MULTIPLIER']
         
         self.ship_obj.applyImpulse(self.obj.worldPosition, thrust * direction * delta)
+
+
+class GunStorage(list):
+	def by_cluster(self):
+		clusters = {}
+		for gun in self:
+			existing = clusters.get(gun.cluster, GunStorage())
+			existing.append(gun)
+			clusters[gun.cluster] = existing
+		return clusters

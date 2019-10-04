@@ -3,10 +3,14 @@ import mathutils
 import utils
 
 
-class Mouse(object):
+class Mouse(utils.BaseClass):
     '''Contains some functions to check if the mouse has moved and by how
     much'''
-    def __init__(self):
+    CONFIG_ITEMS = [
+        'DRAG_THRESHOLD'
+    ]
+    def __init__(self, conf):
+        super().__init__(conf)
         self.click_start_position = None
 
         # These are publically acessible variables that can be queried
@@ -61,7 +65,7 @@ class Mouse(object):
             # If the mouse hasn't moved too far since it was clicked, then
             # register this as a click:
             if self.drag_vector != None:
-                self.did_click = self.drag_vector.length < 0.05
+                self.did_click = self.drag_vector.length < self.config['DRAG_THRESHOLD']
             else:
                 # Single frame click/release
                 self.did_click = True
@@ -90,7 +94,6 @@ class Mouse(object):
                 offset = cam.worldOrientation * offset
                 here = cam.worldPosition + offset - cam.getAxisVect([0,0,1]) * cam.near
                 there = cam.worldPosition + offset - cam.getAxisVect([0,0,1]) * cam.far
-                print(here, there)
 
             self._over_cache[scene.name] = utils.RayHitUVResult(*cam.rayCast(there, here, cam.far, '', 1, 0, 2))
 
