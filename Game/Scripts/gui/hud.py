@@ -139,20 +139,21 @@ class StackingWidget(utils.BaseClass):
         
         self.bottom = self.scene.addObject("RefPosition")
         self._bottom = [o for o in self.top.childrenRecursive if 'BOTTOM' in o][0]
+        self.bottom.setParent(self.top)
         
         self.sub_widgets = [FirstItem(self._bottom)]
         
     def set_subwidgets_visible(self, visible):
+        if visible:
+            self.bottom.worldPosition = self.sub_widgets[-1].bottom.worldPosition
+        else:
+            self.bottom.worldPosition = self._bottom.worldPosition.copy()
+            
+            
         for widget in self.sub_widgets:
             widget.set_visible(visible)
             if not visible:
                 widget.set_subwidgets_visible(visible)
-            
-        if visible:
-            self.bottom.worldPosition = self.sub_widgets[-1].bottom.worldPosition
-        else:
-            print(self.top.name, self._bottom.worldPosition)
-            self.bottom.worldPosition = self._bottom.worldPosition.copy()
             
 
             
