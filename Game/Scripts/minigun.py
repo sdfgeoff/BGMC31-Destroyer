@@ -40,8 +40,6 @@ class MiniGun(gun.Gun):
         self.barrel_velocity = 0.0
         self.time_since_last_shot = 0.0
 
-        self.rounds_remaining = self.config['NUMBER_ROUNDS']
-
         self._event = scheduler.Event(self.update)
         scheduler.add_event(self._event)
 
@@ -109,8 +107,6 @@ class MiniGun(gun.Gun):
             counter -= 1
 
             if self.remove_ammo():
-                self.log.debug(self.M("minigun_firing", rounds_remaining=self.rounds_remaining))
-
                 self.create_bullet(
                     self.spawner,
                     self.time_since_last_shot,

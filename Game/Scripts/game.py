@@ -98,7 +98,6 @@ class Game(utils.BaseClass):
             return
         
         over = self.mouse.get_over(self.scene)
-        
         if self.mouse.did_click and over.obj is not None:
             if 'TERRAIN_TILES' in over.obj:
                 if bge.events.LEFTSHIFTKEY not in bge.logic.keyboard.active_events:

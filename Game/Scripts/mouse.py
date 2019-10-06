@@ -83,8 +83,20 @@ class Mouse(utils.BaseClass):
             pos = bge.logic.mouse.position
             
             if cam.perspective:
-                here = cam.worldPosition - cam.getScreenVect(pos[0], pos[1]) * cam.near
-                there = cam.worldPosition - cam.getScreenVect(pos[0], pos[1]) * cam.far
+                screen_vec = cam.getScreenVect(pos[0], pos[1])
+                # is Broken in UPBGE, so it can be computed manually with:
+                # vec = mathutils.Vector([
+                #     pos[0]*2 - 1.0,
+                #     1.0 - pos[1]*2,
+                #     -1.0,
+                #     1.0
+                # ])
+                # v1 = ((cam.projection_matrix * cam.modelview_matrix).inverted()) * vec
+                # screen_vec = (cam.worldPosition - v1.xyz).normalized()
+                
+                here = cam.worldPosition - screen_vec * cam.near
+                there = cam.worldPosition - screen_vec * cam.far
+
             else:
                 aspect = bge.render.getWindowHeight() / bge.render.getWindowWidth()
                 offset = mathutils.Vector([
@@ -95,7 +107,7 @@ class Mouse(utils.BaseClass):
                 offset = cam.worldOrientation * offset
                 here = cam.worldPosition + offset - cam.getAxisVect([0,0,1]) * cam.near
                 there = cam.worldPosition + offset - cam.getAxisVect([0,0,1]) * cam.far
-
+            
             self._over_cache[scene.name] = utils.RayHitUVResult(*cam.rayCast(
                 there, here, cam.far, '', 1, 0, 2, self.config['COLLISION_MASK']
             ))

@@ -49,9 +49,9 @@ class WeaponSelector(utils.BaseClass):
         self.mouse = mouse
         
         self._display_config = conf
-        self.widgets = WeaponUiVisuals(conf, self.obj, self.ship)
+        self.widgets = WeaponUiVisuals(self.scene, conf, self.obj, self.ship)
         self.selection_chain = [self.widgets]
-        self.widgets.set_subwidgets_visible(True)
+        self.widgets.set_expanded(True)
     
     def set_ship(self, ship):
         self.log.debug(self.M("setting_ship"))
@@ -61,9 +61,9 @@ class WeaponSelector(utils.BaseClass):
     def recreate(self):
         self.log.info(self.M("redraw_weapon_selector"))
         self.widgets.delete()
-        self.widgets = WeaponUiVisuals(self._display_config, self.obj, self.ship)
+        self.widgets = WeaponUiVisuals(self.scene, self._display_config, self.obj, self.ship)
         self.selection_chain = [self.widgets]
-        self.widgets.set_subwidgets_visible(True)
+        self.widgets.set_expanded(True)
         self.widgets.select_all()
     
     def update(self, delta):
@@ -110,36 +110,46 @@ class WeaponSelector(utils.BaseClass):
         self.widgets.update(delta)
     
     def rebuild_selection_chain(self, widget):
-        chain = [widget]
-        while chain[-1].parent != None:
-            chain.append(chain[-1].parent)
+        target_chain = [widget]
+        while target_chain[-1].parent != None:
+            target_chain.append(target_chain[-1].parent)
+        target_chain.reverse()
         
-        self.clear_selection_chain()
-        for elem in reversed(chain):
-            self.add_to_selection_chain(elem)
+        
+        while self.selection_chain[-1] not in target_chain:
+            self.pop_from_selection_chain()
+        
+        for elem in target_chain:
+            if elem not in self.selection_chain:
+                self.add_to_selection_chain(elem)
     
     
     def add_to_selection_chain(self, new_element):
+        self.log.info(self.M("add_selection", elem=new_element.top.name))
         current_tip = self.selection_chain[-1]
         current_tip.select_subwidget(new_element)
         self.selection_chain.append(new_element)
-        new_element.set_subwidgets_visible(True)
+        new_element.set_expanded(True)
         new_element.set_selected(True)
     
     def pop_from_selection_chain(self):
         assert len(self.selection_chain) > 1
+        
         old_element = self.selection_chain.pop()
         new_element = self.selection_chain[-1]
-        
-        old_element.set_subwidgets_visible(False)
+
+        old_element.set_expanded(False)
         old_element.set_selected(False)
         
-        new_element.set_subwidgets_visible(True)
+        new_element.set_expanded(True)
         new_element.select_all()
     
     def clear_selection_chain(self):
         while len(self.selection_chain) > 1:
             self.pop_from_selection_chain()
+        
+        print(self.selection_chain)
+        assert len(self.selection_chain) == 1
     
     def get_selected_guns(self):
         return self.selection_chain[-1].guns
