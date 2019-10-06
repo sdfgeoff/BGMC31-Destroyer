@@ -7,7 +7,8 @@ class Mouse(utils.BaseClass):
     '''Contains some functions to check if the mouse has moved and by how
     much'''
     CONFIG_ITEMS = [
-        'DRAG_THRESHOLD'
+        'DRAG_THRESHOLD',
+        'COLLISION_MASK'
     ]
     def __init__(self, conf):
         super().__init__(conf)
@@ -95,7 +96,9 @@ class Mouse(utils.BaseClass):
                 here = cam.worldPosition + offset - cam.getAxisVect([0,0,1]) * cam.near
                 there = cam.worldPosition + offset - cam.getAxisVect([0,0,1]) * cam.far
 
-            self._over_cache[scene.name] = utils.RayHitUVResult(*cam.rayCast(there, here, cam.far, '', 1, 0, 2))
+            self._over_cache[scene.name] = utils.RayHitUVResult(*cam.rayCast(
+                there, here, cam.far, '', 1, 0, 2, self.config['COLLISION_MASK']
+            ))
 
     def get_over(self, scene):
         '''Returns the object the mouse is over - in the specific scene'''

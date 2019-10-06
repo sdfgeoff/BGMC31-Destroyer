@@ -41,17 +41,17 @@ class Camera(utils.BaseClass):
         '''
         if drag_delta is not None:
             vel = drag_delta.copy()
-            vel *= config.get('MOUSE_SENSITIVITY')
-            if config.get('MOUSE_Y_INVERT'):
+            vel *= config.get('MOUSE/SENSITIVITY')
+            if config.get('MOUSE/Y_INVERT'):
                 vel.y *= -1
         else:
             vel = mathutils.Vector([0, 0])
 
         # Smooth the mouse motion
-        vel = utils.lerp(self.prev_vel, vel, config.get('MOUSE_SMOOTHING'))
+        vel = utils.lerp(self.prev_vel, vel, config.get('MOUSE/SMOOTHING'))
         self.prev_vel = vel
         
-        zoom_vel = utils.lerp(self.zoom_vel, zoom_delta, config.get('MOUSE_ZOOM_SMOOTHING'))
+        zoom_vel = utils.lerp(self.zoom_vel, zoom_delta, config.get('MOUSE/ZOOM_SMOOTHING'))
         self.zoom_vel = zoom_vel
 
         # Rotate the objects
@@ -64,7 +64,7 @@ class Camera(utils.BaseClass):
         self.pitch.localOrientation = current_rot
         
         # Do zooming:
-        self.zoom += self.zoom_vel * config.get('MOUSE_ZOOM_SENSITIVITY')
+        self.zoom += self.zoom_vel * config.get('MOUSE/ZOOM_SENSITIVITY')
         self.zoom = min(1, max(0, self.zoom))
         self.camera.localPosition.x = utils.lerp(
             self.config['MIN_ZOOM_DIST'],

@@ -14,16 +14,13 @@ MAX_SHOTS_PER_FRAME = 3
 
 class MiniGun(gun.Gun):
     """ A minigun with rotation barrels """
-    CONFIG_ITEMS = [
+    CONFIG_ITEMS = gun.Gun.CONFIG_ITEMS + [
         "YAW_SPEED",
         "PITCH_SPEED",
         "ROUNDS_PER_MINUTE",
         "BARREL_ACCELERATION",
         "BARREL_DECELERATION",
         "BARRELS",
-        "MUZZLE_FLASH_OBJECT",
-        "PROJECTILE_CONFIG",
-        "NUMBER_ROUNDS",
         "ROUNDS_PER_TRACER"
     ]
     def __init__(self, obj, config):
@@ -57,7 +54,7 @@ class MiniGun(gun.Gun):
         self._target = obj
 
     def update(self, delta):
-        if self._target != None:
+        if self.has_ammo() and self._target != None:
             self._aim_at(self._target.worldPosition, delta, [self._target])  # TODO: motion prediction
     
     def _aim_at(self, target_position, delta, valid_objects):
@@ -83,11 +80,9 @@ class MiniGun(gun.Gun):
         self.barrel.localOrientation = [0,0,self.barrel_angle]
 
         rayres = self.spawner.rayCast(target_position, self.spawner.worldPosition)
-        if rayres[0] not in valid_objects:
-            return
 
         angle_error = 1.0 - turret_to_target_spawnerspace.normalized().dot(mathutils.Vector([0,0,1]))
-        if angle_error < 0.02:
+        if angle_error < 0.02 and rayres[0] in valid_objects:
             self._fire(delta)
         else:
             if self.barrel_velocity > 0:
@@ -97,8 +92,6 @@ class MiniGun(gun.Gun):
 
 
     def _fire(self, delta):
-        if self.rounds_remaining == 0:
-            return
         self.time_since_last_shot += delta
 
         if self.barrel_velocity < self.config['ROUNDS_PER_MINUTE'] / 60 / self.config['BARRELS']:
@@ -115,27 +108,17 @@ class MiniGun(gun.Gun):
             self.time_since_last_shot -= time_per_shot
             counter -= 1
 
-            self.rounds_remaining -= 1
+            if self.remove_ammo():
+                self.log.debug(self.M("minigun_firing", rounds_remaining=self.rounds_remaining))
 
-            if 1:#self.time_since_last_shot < 0.025:
-                new_flash = self.spawner.scene.addObject(self.config['MUZZLE_FLASH_OBJECT'], self.spawner, 5)
-                new_flash.worldTransform = self.spawner.worldTransform
+                self.create_bullet(
+                    self.spawner,
+                    self.time_since_last_shot,
+                    self.ammo_remaining() % self.config['ROUNDS_PER_TRACER'] == 0
+                )
+            else:
+                break
 
-            self.log.debug(self.M("minigun_firing", rounds_remaining=self.rounds_remaining))
-            sounds.play_effect_single(
-                "Minigun.wav",
-                self.spawner.worldPosition,
-                self.time_since_last_shot,
-                0.1,
-                0.3
-            )
-            bullet.create_bullet(
-                self,
-                self.spawner,
-                self.time_since_last_shot,
-                self.config['PROJECTILE_CONFIG'],
-                self.rounds_remaining % self.config['ROUNDS_PER_TRACER'] == 0
-            )
         if counter == 0:
             self.log.warn(self.M("shots_per_frame_exceeded", since_last_shot=self.time_since_last_shot, per_shot=time_per_shot, delta=delta))
             self.time_since_last_shot = 0.0

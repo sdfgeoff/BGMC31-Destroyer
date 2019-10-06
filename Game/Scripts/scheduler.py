@@ -47,7 +47,7 @@ def remove_event(event):
 
 def update_events():
     """ Updates all events currently registered to the scheduler """
-    if config.get('PROFILE'):
+    if config.get('SYS/PROFILE'):
         profiler.runcall(_do_update)
         
     else:
@@ -67,7 +67,7 @@ def _do_update():
 
 class OnExit:
     def __del__(self):
-        if config.get('PROFILE'):
+        if config.get('SYS/PROFILE'):
             profiler.print_stats(sort='tottime')
 
 bge.logic.globalDict['Exit'] = OnExit()

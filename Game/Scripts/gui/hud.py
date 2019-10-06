@@ -2,6 +2,8 @@ import scheduler
 import utils
 import defs
 import bge
+import config
+from .weapon_ui import WeaponUiVisuals
 
 
 class HUD(utils.BaseClass):
@@ -20,7 +22,8 @@ class HUD(utils.BaseClass):
         
         self.weapon_selector = WeaponSelector(
             [o for o in scene.objects if 'WEAPON_SELECTOR' in o][0],
-            self.config['WEAPON_UI_CONFIG']
+            self.config['WEAPON_UI_CONFIG'],
+            self.mouse
         )
         
         
@@ -36,21 +39,19 @@ class HUD(utils.BaseClass):
 
 
 class WeaponSelector(utils.BaseClass):
-    CONFIG_ITEMS = [
-        'RAILGUN',
-        'MINIGUN',
-    ]
-    def __init__(self, obj, conf):
-        super().__init__(conf)
+    """ Logic for navigating through weapon selection """
+    def __init__(self, obj, conf, mouse):
+        super().__init__({})
         self.log.info(self.M("create_weapon_selector"))
         self.obj = obj
         self.scene = obj.scene
         self.ship = None
+        self.mouse = mouse
         
-        self.objs = [FirstItem(self.obj)]
-        
-        self.recreate()
-    
+        self._display_config = conf
+        self.widgets = WeaponUiVisuals(conf, self.obj, self.ship)
+        self.selection_chain = [self.widgets]
+        self.widgets.set_subwidgets_visible(True)
     
     def set_ship(self, ship):
         self.log.debug(self.M("setting_ship"))
@@ -59,226 +60,99 @@ class WeaponSelector(utils.BaseClass):
         
     def recreate(self):
         self.log.info(self.M("redraw_weapon_selector"))
-        
-        for obj in self.objs[1:]:
-            obj.delete()
-        self.objs = self.objs[:1]
-        
-        if self.ship is None:
-            self.log.debug(self.M("no_ship"))
-            return
-        
-        counter = 1
-        if self.ship.miniguns:
-            self.log.debug(self.M("has_miniguns"))
-            self.objs.append(WeaponCategory(
-                self.config['MINIGUN'],
-                self.objs[-1],
-                self.ship.miniguns,
-                counter
-            ))
-            counter += 1
-            
-        if self.ship.railguns:
-            self.log.debug(self.M("has_railguns"))
-            self.objs.append(WeaponCategory(
-                self.config['RAILGUN'],
-                self.objs[-1],
-                self.ship.railguns,
-                counter
-            ))
-            counter += 1
+        self.widgets.delete()
+        self.widgets = WeaponUiVisuals(self._display_config, self.obj, self.ship)
+        self.selection_chain = [self.widgets]
+        self.widgets.set_subwidgets_visible(True)
+        self.widgets.select_all()
     
     def update(self, delta):
         keys = {
-            bge.events.ONEKEY: 1,
-            bge.events.TWOKEY: 2,
-            bge.events.THREEKEY:3 ,
-            bge.events.FOURKEY: 4,
-            bge.events.FIVEKEY: 5,
-            bge.events.SIXKEY: 6,
-            bge.events.SEVENKEY: 7,
-            bge.events.EIGHTKEY: 8,
-            bge.events.NINEKEY: 9,
-            bge.events.ZEROKEY: 0,
+            'ONEKEY': 1,
+            'TWOKEY': 2,
+            'THREEKEY':3 ,
+            'FOURKEY': 4,
+            'FIVEKEY': 5,
+            'SIXKEY': 6,
+            'SEVENKEY': 7,
+            'EIGHTKEY': 8,
+            'NINEKEY': 9,
+            'ZEROKEY': 0,
         }
         num = None
         for key in keys.keys():
-            if bge.logic.keyboard.events[key] == bge.logic.KX_INPUT_JUST_ACTIVATED:
+            if key_triggered(key):
                 num = keys[key]
+
         if num != None:
-            for obj in self.objs:
-                obj.set_selected(obj.number == num)
-
-
-
-class FirstItem:
-    def __init__(self, obj):
-        self.obj = obj
-        self.bottom = obj
-        self.number = 0
+            current_tip = self.selection_chain[-1]
+            new_tip = get_widget_by_number(current_tip.sub_widgets, num)
+            if new_tip is not None:
+                self.add_to_selection_chain(new_tip)
+        
+        if len(self.selection_chain) > 1:
+            if key_triggered(config.get('KEYS/WEAPON_SELECTION/BACK')):
+                self.pop_from_selection_chain()
+            if key_triggered(config.get('KEYS/WEAPON_SELECTION/RESET')):
+                self.clear_selection_chain()
+        
+        
+        if self.mouse.did_click:
+            over = self.mouse.get_over(self.scene).obj
+            if over:
+                owner = over.get('WEAPON_WIDGET')
+                if owner == self.selection_chain[-1]:
+                    # Clicking on active element, close it
+                    self.pop_from_selection_chain()
+                else:
+                    self.rebuild_selection_chain(owner)
+        
+        self.widgets.update(delta)
     
-    def set_subwidgets_visible(self, visible):
-        pass
+    def rebuild_selection_chain(self, widget):
+        chain = [widget]
+        while chain[-1].parent != None:
+            chain.append(chain[-1].parent)
         
-    def set_visible(self, visible):
-        pass
-        
-    def set_selected(self, val):
-        pass
-
-
-class StackingWidget(utils.BaseClass):
-    def __init__(self, config, above, obj_name):
-        super().__init__(config)
-        self.scene = above.bottom.scene
-        self.above = above
-        self.top = self.scene.addObject(obj_name)
-        self.top.worldPosition = self.above.bottom.worldPosition.copy()
-        self.top.setParent(self.above.bottom)
-        
-        self.bottom = self.scene.addObject("RefPosition")
-        self._bottom = [o for o in self.top.childrenRecursive if 'BOTTOM' in o][0]
-        self.bottom.setParent(self.top)
-        
-        self.sub_widgets = [FirstItem(self._bottom)]
-        
-    def set_subwidgets_visible(self, visible):
-        if visible:
-            self.bottom.worldPosition = self.sub_widgets[-1].bottom.worldPosition
-        else:
-            self.bottom.worldPosition = self._bottom.worldPosition.copy()
-            
-            
-        for widget in self.sub_widgets:
-            widget.set_visible(visible)
-            if not visible:
-                widget.set_subwidgets_visible(visible)
-            
-
-            
-
-class WeaponCategory(StackingWidget):
-    CONFIG_ITEMS = [
-        'TEXT',
-        'IMAGE_OFFSET'
-    ]
-    def __init__(self, conf, above, guns, number):
-        super().__init__(conf, above, "WeaponCategory")
-        self.number = number
-        self.log.info(self.M("creating_weapon_category"))
-        
-        self.number_display = [o for o in self.top.childrenRecursive if 'NUMBER' in o][0]
-        self.name_display = [o for o in self.top.childrenRecursive if 'NAME' in o][0]
-        self.image_display = [o for o in self.top.childrenRecursive if 'IMAGE' in o][0]
-        
-        self.number_display.text = str(self.number)
-        self.name_display.text = self.config['TEXT']
-        self.image_display.color = [self.config['IMAGE_OFFSET'], 0, 0, 1]
-        
-        self.add_clusters(guns)
-        self.set_selected(False)
+        self.clear_selection_chain()
+        for elem in reversed(chain):
+            self.add_to_selection_chain(elem)
     
     
-    def set_selected(self, selected):
-        if selected:
-            self.image_display.color = [self.config['IMAGE_OFFSET'], 1.0, 0, 1]
-            self.number_display.visible = False
-            self.set_subwidgets_visible(True)
-        else:
-            self.image_display.color = [self.config['IMAGE_OFFSET'], 0.5, 0, 1]
-            self.number_display.visible = True
-            self.set_subwidgets_visible(False)
-
-
-    def add_clusters(self, guns):
-        clusters = guns.by_cluster()
-        counter = 1
-        
-        for cluster_name in sorted(clusters.keys()):
-            self.sub_widgets.append(WeaponCluster(
-                {},
-                self.sub_widgets[-1],
-                cluster_name,
-                clusters[cluster_name],
-                counter
-            ))
-            counter += 1
-            
-        self.sub_widgets.append(EndBorder(
-            self.sub_widgets[-1]
-        ))
-        
-    def set_visible(self, visible):
-        self.number_display.visible = visible
-        self.name_display.visible = visible
-        self.image_display.visible = visible
-        self.top.visible = visible
-
-
-class EndBorder(StackingWidget):
-    def __init__(self, above):
-        super().__init__({}, above, "WeaponUiBottom")
+    def add_to_selection_chain(self, new_element):
+        current_tip = self.selection_chain[-1]
+        current_tip.select_subwidget(new_element)
+        self.selection_chain.append(new_element)
+        new_element.set_subwidgets_visible(True)
+        new_element.set_selected(True)
     
-    def set_visible(self, visible):
-        self.top.visible = visible
-
-
-class WeaponCluster(StackingWidget):
-    def __init__(self, config, above, name, guns, number):
-        super().__init__(config, above, "WeaponCluster")
-        self.number = number
-        self.log.info(self.M("creating_weapon_cluster", cluster=name))
+    def pop_from_selection_chain(self):
+        assert len(self.selection_chain) > 1
+        old_element = self.selection_chain.pop()
+        new_element = self.selection_chain[-1]
         
-        self.number_display = [o for o in self.top.childrenRecursive if 'NUMBER' in o][0]
-        self.name_display = [o for o in self.top.childrenRecursive if 'NAME' in o][0]
+        old_element.set_subwidgets_visible(False)
+        old_element.set_selected(False)
         
-        self.number_display.text = str(self.number)
-        self.name_display.text = name
-        self.add_guns(guns)
-
-    def add_guns(self, guns):
-        guns_sorted = sorted(guns, key=lambda x: x.number)
-        for gun in guns_sorted:
-            self.sub_widgets.append(WeaponItem(
-                {},
-                self.sub_widgets[-1],
-                gun
-            ))
-
-
-    def set_visible(self, visible):
-        self.number_display.visible = visible
-        self.name_display.visible = visible
-        self.top.visible = visible
-
-
-class WeaponItem(StackingWidget):
-    def __init__(self, config, above, gun):
-        super().__init__(config, above, "WeaponSingle")
-        self.log.info(self.M("creating_weapon_item", name=gun.name, number=gun.number))
-        
-        self.number_display = [o for o in self.top.childrenRecursive if 'NUMBER' in o][0]
-        self.name_display = [o for o in self.top.childrenRecursive if 'NAME' in o][0]
-        self.ammo_display = [o for o in self.top.childrenRecursive if 'AMMO' in o][0]
-        
-        self.number_display.text = str(gun.number)
-        self.name_display.text = str(gun.name)
-        
-        self.set_selected
-
-    def set_visible(self, visible):
-        self.number_display.visible = visible
-        self.name_display.visible = visible
-        self.top.visible = visible
-        self.ammo_display.visible = visible
+        new_element.set_subwidgets_visible(True)
+        new_element.select_all()
     
+    def clear_selection_chain(self):
+        while len(self.selection_chain) > 1:
+            self.pop_from_selection_chain()
     
-    def set_selected(self, selected):
-        if selected:
-            color = [1.0 * 4]
-        else:
-            color = [0.5 * 4]
+    def get_selected_guns(self):
+        return self.selection_chain[-1].guns
         
-        self.number_display.color = color
-        self.name_display.color = color
+
+
+def get_widget_by_number(li, num):
+    found = [l for l in li if l.number == num]
+    if found:
+        return found[0]
+    return None
+
+
+def key_triggered(keyname):
+    keycode = bge.events.__dict__[keyname]
+    return bge.logic.keyboard.events[keycode] == bge.logic.KX_INPUT_JUST_ACTIVATED

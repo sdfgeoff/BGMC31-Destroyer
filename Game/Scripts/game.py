@@ -25,8 +25,8 @@ class Game(utils.BaseClass):
     def __init__(self, scene, conf):
         super().__init__(conf)
         
-        logging.basicConfig(level=config.get('LOG_LEVEL'), format='%(message)s')
-        if config.get('EXIT_ON_ERROR'):
+        logging.basicConfig(level=config.get('SYS/LOG_LEVEL'), format='%(message)s')
+        if config.get('SYS/EXIT_ON_ERROR'):
             self.log.info("exit_with_error_enabled")
             sys.excepthook = err
         else:
@@ -35,6 +35,12 @@ class Game(utils.BaseClass):
         for cb in gc.callbacks.copy():
             gc.callbacks.remove(cb)
         gc.callbacks.append(gc_notify)
+        
+        exit_key = config.get('KEYS/EMERGENCY_ABORT_KEY')
+        if exit_key:
+            bge.logic.setExitKey(
+                bge.events.__dict__[exit_key]
+            )
         
         
             
@@ -108,12 +114,7 @@ class Game(utils.BaseClass):
                     
             else:
                 target = over.obj
-                guns = self.hero.miniguns
-                if bge.events.LEFTSHIFTKEY in bge.logic.keyboard.active_events:
-                    guns = self.hero.railguns
-                if bge.events.LEFTCTRLKEY in bge.logic.keyboard.active_events:
-                    target = None
-
+                guns = self.hud.weapon_selector.get_selected_guns()
                 for gun in guns:
                     gun.target(target)
         

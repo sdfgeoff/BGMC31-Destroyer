@@ -1,0 +1,3 @@
+[submodule "lib/upbge"]
+	path = lib/upbge
+	url = git@github.com:UPBGE/blender.git

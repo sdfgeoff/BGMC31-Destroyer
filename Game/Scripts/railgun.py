@@ -7,12 +7,9 @@ import sounds
 import gun
 
 class RailGun(gun.Gun):
-    CONFIG_ITEMS = [
-        'NUMBER_ROUNDS',
+    CONFIG_ITEMS = gun.Gun.CONFIG_ITEMS + [
         'YAW_SPEED',
         'BARREL_CONFIG',
-        'MUZZLE_FLASH_OBJECT',
-        'PROJECTILE_CONFIG',
         'RELOAD_TIME',
         'SALVO_SEPARATION_TIME',
     ]
@@ -30,8 +27,6 @@ class RailGun(gun.Gun):
         self.barrels = [Barrel(o, self.config['BARREL_CONFIG']) for o in objs if 'SPAWNER' in o]
 
         self._target = None
-        
-        self.rounds_remaining = self.config['NUMBER_ROUNDS']
 
         self._event = scheduler.Event(self.update)
         scheduler.add_event(self._event)
@@ -51,7 +46,7 @@ class RailGun(gun.Gun):
     def update(self, delta):
         self.time_since_last_shot += delta
         
-        if self._target != None:
+        if self.has_ammo() and self._target != None:
             self._aim_at(self._target.worldPosition, delta, [self._target])  # TODO: motion prediction
     
     def _aim_at(self, target_position, delta, valid_objects):
@@ -76,9 +71,6 @@ class RailGun(gun.Gun):
 
 
     def _fire(self, delta):
-        if self.rounds_remaining == 0:
-            return
-
         if self.salvo_number == 0:
             # First shot in salvo
             time_between = self.config['RELOAD_TIME']
@@ -87,37 +79,25 @@ class RailGun(gun.Gun):
 
 
         while self.time_since_last_shot > time_between:
-            self.rounds_remaining -= 1
-            self.time_since_last_shot = 0  # So that salvos are timed properly
-            
-            assert self.salvo_number < len(self.barrels)
-            barrel = self.barrels[self.salvo_number]
-            
-            self.salvo_number += 1
-            if self.salvo_number > len(self.barrels) - 1:
-                self.salvo_number = 0
+            if self.remove_ammo():
+                self.time_since_last_shot = 0  # So that salvos are timed properly
+                
+                assert self.salvo_number < len(self.barrels)
+                barrel = self.barrels[self.salvo_number]
+                
+                self.salvo_number += 1
+                if self.salvo_number > len(self.barrels) - 1:
+                    self.salvo_number = 0
 
-            if 1:#self.time_since_last_shot < 0.025:
-                new_flash = barrel.spawner.scene.addObject(self.config['MUZZLE_FLASH_OBJECT'], barrel.spawner, 5)
-                new_flash.worldTransform = barrel.spawner.worldTransform
-
-            self.log.debug(self.M("minigun_firing", rounds_remaining=self.rounds_remaining))
-            
-            sounds.play_effect_single(
-                "Railgun.wav",
-                barrel.spawner.worldPosition,
-                0.0,
-                0.1,
-                0.1
-            )
-            barrel.animate_fire()
-            bullet.create_bullet(
-                self,
-                barrel.spawner,
-                self.time_since_last_shot,
-                self.config['PROJECTILE_CONFIG'],
-                True
-            )
+                
+                barrel.animate_fire()
+                self.create_bullet(
+                    barrel.spawner,
+                    self.time_since_last_shot,
+                    True
+                )
+            else:
+                break
 
     def __del__(self):
         scheduler.remove_event(self._event)
